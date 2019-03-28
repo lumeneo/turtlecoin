@@ -1,13 +1,11 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018-2019, The TurtleCoin Developers
+// Copyright (c) 2018, The TurtleCoin Developers
 //
 // Please see the included LICENSE file for more information.
 
 #include "P2pNode.h"
 
 #include <boost/uuid/uuid_io.hpp>
-
-#include <random>
 
 #include <System/ContextGroupTimeout.h>
 #include <System/InterruptedException.h>
@@ -17,7 +15,6 @@
 #include <System/TcpConnector.h>
 
 #include <config/CryptoNoteConfig.h>
-#include <crypto/random.h>
 #include "Common/StdInputStream.h"
 #include "Common/StdOutputStream.h"
 #include "Serialization/BinaryInputStreamSerializer.h"
@@ -66,7 +63,7 @@ private:
       return 0;
     }
 
-    size_t x = Random::randomValue<size_t>() % (maxIndex + 1);
+    size_t x = Crypto::rand<size_t>() % (maxIndex + 1);
     return (x * x * x) / (maxIndex * maxIndex);
   }
 
@@ -107,11 +104,12 @@ void doWithTimeoutAndThrow(System::Dispatcher& dispatcher, std::chrono::nanoseco
 
 }
 
-P2pNode::P2pNode(const P2pNodeConfig& cfg, Dispatcher& dispatcher, std::shared_ptr<Logging::ILogger> log, const Crypto::Hash& genesisHash, uint64_t peerId) :
+P2pNode::P2pNode(const P2pNodeConfig& cfg, Dispatcher& dispatcher, Logging::ILogger& log, const Crypto::Hash& genesisHash, PeerIdType peerId) :
   logger(log, "P2pNode:" + std::to_string(cfg.getBindPort())),
   m_stopRequested(false),
   m_cfg(cfg),
   m_myPeerId(peerId),
+  m_genesisHash(genesisHash),
   m_genesisPayload(CORE_SYNC_DATA{ 1, genesisHash }),
   m_dispatcher(dispatcher),
   workingContextGroup(dispatcher),
@@ -127,6 +125,21 @@ P2pNode::P2pNode(const P2pNodeConfig& cfg, Dispatcher& dispatcher, std::shared_p
 P2pNode::~P2pNode() {
   assert(m_contexts.empty());
   assert(m_connectionQueue.empty());
+}
+
+std::unique_ptr<IP2pConnection> P2pNode::receiveConnection() {
+  while (m_connectionQueue.empty()) {
+    m_queueEvent.wait();
+    m_queueEvent.clear();
+    if (m_stopRequested) {
+      throw InterruptedException();
+    }
+  }
+
+  auto connection = std::move(m_connectionQueue.front());
+  m_connectionQueue.pop_front();
+
+  return connection;
 }
 
 void P2pNode::start() {
@@ -213,7 +226,7 @@ void P2pNode::connectPeers() {
   // if white peer list is empty, get peers from seeds
   if (m_peerlist.get_white_peers_count() == 0 && !m_cfg.getSeedNodes().empty()) {
     auto seedNodes = m_cfg.getSeedNodes();
-    std::shuffle(seedNodes.begin(), seedNodes.end(), std::random_device{});
+    std::random_shuffle(seedNodes.begin(), seedNodes.end());
     for (const auto& seed : seedNodes) {
       auto conn = tryToConnectPeer(seed);
       if (conn != nullptr && fetchPeerList(std::move(conn))) {
@@ -243,7 +256,7 @@ void P2pNode::connectPeers() {
   }
 }
 
-void P2pNode::makeExpectedConnectionsCount(const Peerlist& peerlist, size_t connectionsCount) {
+void P2pNode::makeExpectedConnectionsCount(const PeerlistManager::Peerlist& peerlist, size_t connectionsCount) {
   while (getOutgoingConnectionsCount() < connectionsCount) {
     if (peerlist.count() == 0) {
       return;
@@ -255,7 +268,7 @@ void P2pNode::makeExpectedConnectionsCount(const Peerlist& peerlist, size_t conn
   }
 }
 
-bool P2pNode::makeNewConnectionFromPeerlist(const Peerlist& peerlist) {
+bool P2pNode::makeNewConnectionFromPeerlist(const PeerlistManager::Peerlist& peerlist) {
   size_t peerIndex;
   PeerIndexGenerator idxGen(std::min<uint64_t>(peerlist.count() - 1, m_cfg.getPeerListConnectRange()));
 
@@ -425,7 +438,7 @@ const CORE_SYNC_DATA& P2pNode::getGenesisPayload() const {
   return m_genesisPayload;
 }
 
-std::list<PeerlistEntry> P2pNode::getLocalPeerList() {
+std::list<PeerlistEntry> P2pNode::getLocalPeerList() const {
   std::list<PeerlistEntry> peerlist;
   m_peerlist.get_peerlist_head(peerlist);
   return peerlist;
@@ -447,7 +460,7 @@ basic_node_data P2pNode::getNodeData() const {
   return nodeData;
 }
 
-uint64_t P2pNode::getPeerId() const {
+PeerIdType P2pNode::getPeerId() const {
   return m_myPeerId;
 }
 

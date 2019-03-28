@@ -19,7 +19,7 @@
 
 #include <iostream>
 
-#include <Utilities/ColouredMsg.h>
+#include <zedwallet/ColouredMsg.h>
 #include <zedwallet/PasswordContainer.h>
 #include <config/WalletConfig.h>
 
@@ -256,11 +256,7 @@ uint64_t getScanHeight()
 
         try
         {
-            return std::stoull(stringHeight);
-        }
-        catch (const std::out_of_range &)
-        {
-            std::cout << WarningMsg("Input is too large or too small!");
+            return std::stoi(stringHeight);
         }
         catch (const std::invalid_argument &)
         {
@@ -373,47 +369,5 @@ bool shutdown(std::shared_ptr<WalletInfo> walletInfo, CryptoNote::INode &node,
 
     std::cout << "Bye." << std::endl;
     
-    return true;
-}
-
-std::vector<std::string> split(const std::string& str, char delim = ' ')
-{
-    std::vector<std::string> cont;
-    std::stringstream ss(str);
-    std::string token;
-    while (std::getline(ss, token, delim)) {
-        cont.push_back(token);
-    }
-    return cont;
-}
-
-bool parseDaemonAddressFromString(std::string& host, int& port, const std::string& address)
-{
-    std::vector<std::string> parts = split(address, ':');
-
-    if (parts.empty())
-    {
-        return false;
-    }
-    else if (parts.size() >= 2)
-    {
-        try
-        {
-            host = parts.at(0);
-            port = std::stoi(parts.at(1));
-            return true;
-        }
-        catch (const std::out_of_range &)
-        {
-            return false;
-        }
-        catch (const std::invalid_argument &)
-        {
-            return false;
-        }
-    }
-
-    host = parts.at(0);
-    port = CryptoNote::RPC_DEFAULT_PORT;
     return true;
 }

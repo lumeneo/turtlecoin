@@ -128,6 +128,7 @@ WalletSerializerV2::WalletSerializerV2(
   std::string& extra,
   uint32_t transactionSoftLockTime
 ) :
+  m_transfersObserver(transfersObserver),
   m_actualBalance(actualBalance),
   m_pendingBalance(pendingBalance),
   m_walletsContainer(walletsContainer),
@@ -136,7 +137,8 @@ WalletSerializerV2::WalletSerializerV2(
   m_transactions(transactions),
   m_transfers(transfers),
   m_uncommitedTransactions(uncommitedTransactions),
-  m_extra(extra)
+  m_extra(extra),
+  m_transactionSoftLockTime(transactionSoftLockTime)
 {
 }
 
@@ -194,7 +196,7 @@ std::unordered_set<Crypto::PublicKey>& WalletSerializerV2::deletedKeys() {
 }
 
 void WalletSerializerV2::loadKeyListAndBalances(CryptoNote::ISerializer& serializer, bool saveCache) {
-  uint64_t walletCount;
+  size_t walletCount;
   serializer(walletCount, "walletCount");
 
   m_actualBalance = 0;
@@ -238,7 +240,7 @@ void WalletSerializerV2::loadKeyListAndBalances(CryptoNote::ISerializer& seriali
 }
 
 void WalletSerializerV2::saveKeyListAndBalances(CryptoNote::ISerializer& serializer, bool saveCache) {
-  uint64_t walletCount = m_walletsContainer.get<RandomAccessIndex>().size();
+  auto walletCount = m_walletsContainer.get<RandomAccessIndex>().size();
   serializer(walletCount, "walletCount");
   for (auto wallet : m_walletsContainer.get<RandomAccessIndex>()) {
     serializer(wallet.spendPublicKey, "spendPublicKey");
@@ -272,7 +274,7 @@ void WalletSerializerV2::loadTransactions(CryptoNote::ISerializer& serializer) {
     tx.extra = dto.extra;
     tx.isBase = dto.isBase;
 
-    m_transactions.get<RandomAccessIndex>().push_back(std::move(tx));
+    m_transactions.get<RandomAccessIndex>().emplace_back(std::move(tx));
   }
 }
 
@@ -357,7 +359,7 @@ void WalletSerializerV2::loadUnlockTransactionsJobs(CryptoNote::ISerializer& ser
       job.transactionHash = dto.transactionHash;
       job.container = walletIt->container;
 
-      index.insert(std::move(job));
+      index.emplace(std::move(job));
     }
   }
 }

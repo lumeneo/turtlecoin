@@ -36,6 +36,10 @@ namespace {
 
 const int RETRY_TIMEOUT = 5;
 
+std::ostream& operator<<(std::ostream& os, const CryptoNote::IBlockchainConsumer* consumer) {
+  return os << "0x" << std::setw(8) << std::setfill('0') << std::hex << reinterpret_cast<uintptr_t>(consumer) << std::dec << std::setfill(' ');
+}
+
 class TransactionReaderListFormatter {
 public:
   explicit TransactionReaderListFormatter(const std::vector<std::unique_ptr<CryptoNote::ITransactionReader>>& transactionList) :
@@ -68,7 +72,7 @@ private:
 
 namespace CryptoNote {
 
-BlockchainSynchronizer::BlockchainSynchronizer(INode& node, std::shared_ptr<Logging::ILogger> logger, const Hash& genesisBlockHash) :
+BlockchainSynchronizer::BlockchainSynchronizer(INode& node, Logging::ILogger& logger, const Hash& genesisBlockHash) :
   m_logger(logger, "BlockchainSynchronizer"),
   m_node(node),
   m_genesisBlockHash(genesisBlockHash),
@@ -538,8 +542,9 @@ void BlockchainSynchronizer::processBlocks(GetBlocksResponse& response) {
       if (m_node.getKnownBlockCount() != m_node.getLocalBlockCount()) {
         m_logger(DEBUGGING) << "Blockchain updated, resume blockchain synchronization";
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      } 
-      break;
+      } else {
+        break;
+      }
 
     case UpdateConsumersResult::addedNewBlocks:
       setFutureState(State::blockchainSync);

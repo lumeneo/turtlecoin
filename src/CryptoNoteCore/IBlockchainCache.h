@@ -17,8 +17,6 @@
 
 #pragma once
 
-#include <unordered_map>
-
 #include <vector>
 
 #include <CryptoNote.h>
@@ -148,8 +146,6 @@ public:
 
   virtual size_t getKeyOutputsCountForAmount(uint64_t amount, uint32_t blockIndex) const = 0;
 
-  virtual std::tuple<bool, uint64_t> getBlockHeightForTimestamp(uint64_t timestamp) const = 0;
-
   virtual uint32_t getTimestampLowerBoundBlockIndex(uint64_t timestamp) const = 0;
 
   //NOTE: shouldn't be recursive otherwise we'll get quadratic complexity
@@ -161,9 +157,6 @@ public:
 
   //NOTE: not recursive!
   virtual bool getTransactionGlobalIndexes(const Crypto::Hash& transactionHash, std::vector<uint32_t>& globalIndexes) const = 0;
-
-  virtual std::unordered_map<Crypto::Hash, std::vector<uint64_t>> getGlobalIndexes( 
-    const std::vector<Crypto::Hash> transactionHashes) const = 0;
 
   virtual size_t getTransactionCount() const = 0;
 
@@ -183,10 +176,6 @@ public:
 
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const = 0;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const = 0;
-
-  virtual std::vector<RawBlock> getBlocksByHeight(
-    const uint64_t startHeight,
-    uint64_t endHeight) const = 0;
 };
 
 }

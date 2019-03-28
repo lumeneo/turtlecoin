@@ -17,14 +17,22 @@
 
 #include "IWallet.h"
 
-#include <NodeRpcProxy/NodeErrors.h>
+/* NodeErrors.h and WalletErrors.h have some conflicting enums, e.g. they
+   both export NOT_INITIALIZED, we can get round this by using a namespace */
+namespace NodeErrors
+{
+    #include <NodeRpcProxy/NodeErrors.h>
+}
 
-#include <Utilities/ColouredMsg.h>
+#include <zedwallet/ColouredMsg.h>
 #include <zedwallet/Fusion.h>
 #include <zedwallet/Tools.h>
 #include <config/WalletConfig.h>
 
-#include <Wallet/WalletErrors.h>
+namespace WalletErrors
+{
+    #include <Wallet/WalletErrors.h>
+}
 
 #include <Wallet/WalletGreen.h>
 #include <Wallet/WalletUtils.h>
@@ -288,7 +296,10 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height,
 
     const uint64_t balance = walletInfo->wallet.getActualBalance();
 
-    const uint64_t balanceNoDust = walletInfo->wallet.getBalanceMinusDust({});
+    const uint64_t balanceNoDust = walletInfo->wallet.getBalanceMinusDust
+    (
+        {walletInfo->walletAddress}
+    );
     
     const auto maybeAddress = getAddress("What address do you want to transfer"
                                          " to?: ");
@@ -631,13 +642,13 @@ bool handleTransferError(const std::system_error &e,
 
     switch (e.code().value())
     {
-        case CryptoNote::error::WRONG_AMOUNT:
+        case WalletErrors::CryptoNote::error::WRONG_AMOUNT:
         {
             wrongAmount = true;
             [[fallthrough]];
         }
-        case CryptoNote::error::MIXIN_COUNT_TOO_BIG:
-        case CryptoNote::NodeError::INTERNAL_NODE_ERROR:
+        case WalletErrors::CryptoNote::error::MIXIN_COUNT_TOO_BIG:
+        case NodeErrors::CryptoNote::error::INTERNAL_NODE_ERROR:
         {
     
             if (wrongAmount)
@@ -681,8 +692,8 @@ bool handleTransferError(const std::system_error &e,
 
             break;
         }
-        case CryptoNote::NodeError::NETWORK_ERROR:
-        case CryptoNote::NodeError::CONNECT_ERROR:
+        case NodeErrors::CryptoNote::error::NETWORK_ERROR:
+        case NodeErrors::CryptoNote::error::CONNECT_ERROR:
         {
             std::cout << WarningMsg("Couldn't connect to the network "
                                     "to send the transaction!")
@@ -1022,7 +1033,7 @@ AddressType parseAddress(std::string address)
         WalletConfig::addressPrefix)
     {
         std::cout << WarningMsg("Invalid address! It should start with ")
-                  << WarningMsg(std::string(WalletConfig::addressPrefix))
+                  << WarningMsg(WalletConfig::addressPrefix)
                   << WarningMsg("!")
                   << std::endl << std::endl;
 
@@ -1074,7 +1085,7 @@ bool parseStandardAddress(std::string address, bool printErrors)
         if (printErrors)
         {
             std::cout << WarningMsg("Invalid address! It should start with ")
-                      << WarningMsg(std::string(WalletConfig::addressPrefix))
+                      << WarningMsg(WalletConfig::addressPrefix)
                       << WarningMsg("!")
                       << std::endl << std::endl;
         }

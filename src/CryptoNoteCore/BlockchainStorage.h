@@ -19,8 +19,6 @@
 
 #include <CryptoNote.h>
 
-#include <memory>
-
 namespace CryptoNote {
 
 //TODO: rename this class since it's not persistent blockchain storage!

@@ -21,7 +21,7 @@
 #include <system_error>
 
 namespace CryptoNote {
-namespace NodeError {
+namespace error {
 
 // custom error conditions enum type:
 enum NodeErrorCodes {
@@ -31,8 +31,7 @@ enum NodeErrorCodes {
   NODE_BUSY,
   INTERNAL_NODE_ERROR,
   REQUEST_ERROR,
-  CONNECT_ERROR,
-  TIMEOUT
+  CONNECT_ERROR
 };
 
 // custom category:
@@ -57,7 +56,6 @@ public:
     case INTERNAL_NODE_ERROR: return "Internal node error";
     case REQUEST_ERROR:       return "Error in request parameters";
     case CONNECT_ERROR:       return "Can't connect to daemon";
-    case TIMEOUT:             return "Operation timed out";
     default:                  return "Unknown error";
     }
   }
@@ -70,6 +68,6 @@ private:
 }
 }
  
-inline std::error_code make_error_code(CryptoNote::NodeError::NodeErrorCodes e) {
-  return std::error_code(static_cast<int>(e), CryptoNote::NodeError::NodeErrorCategory::INSTANCE);
+inline std::error_code make_error_code(CryptoNote::error::NodeErrorCodes e) {
+  return std::error_code(static_cast<int>(e), CryptoNote::error::NodeErrorCategory::INSTANCE);
 }

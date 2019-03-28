@@ -31,7 +31,7 @@ public:
   MemoryStream() : m_writePos(0) {
   }
 
-  virtual uint64_t writeSome(const void* data, uint64_t size) override {
+  virtual size_t writeSome(const void* data, size_t size) override {
     if (size == 0) {
       return 0;
     }
@@ -45,7 +45,7 @@ public:
     return size;
   }
 
-  uint64_t size() {
+  size_t size() {
     return m_buffer.size();
   }
 
@@ -59,7 +59,7 @@ public:
   }
 
 private:
-  uint64_t m_writePos;
+  size_t m_writePos;
   std::vector<uint8_t> m_buffer;
 };
 

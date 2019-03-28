@@ -26,7 +26,7 @@ public:
   TransactionPoolCleanWrapper(
     std::unique_ptr<ITransactionPool>&& transactionPool,
     std::unique_ptr<ITimeProvider>&& timeProvider,
-    std::shared_ptr<Logging::ILogger> logger,
+    Logging::ILogger& logger,
     uint64_t timeout);
 
   TransactionPoolCleanWrapper(const TransactionPoolCleanWrapper&) = delete;

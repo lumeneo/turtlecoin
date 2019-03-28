@@ -43,10 +43,7 @@ namespace {
     if (!lock.owns_lock()) {
       return;
     }
-
-    if (m_handler) {
-      m_handler();
-    }
+    m_handler();
   }
 
 
@@ -104,4 +101,5 @@ namespace Tools {
     return true;
 #endif
   }
+
 }

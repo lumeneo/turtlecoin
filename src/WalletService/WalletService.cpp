@@ -360,7 +360,7 @@ std::vector<CryptoNote::WalletOrder> convertWalletRpcOrdersToWalletOrders(const 
 
 }
 
-void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, std::shared_ptr<Logging::ILogger> logger, System::Dispatcher& dispatcher) {
+void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, Logging::ILogger& logger, System::Dispatcher& dispatcher) {
   Logging::LoggerRef log(logger, "generateNewWallet");
 
   CryptoNote::INode* nodeStub = NodeFactory::createNodeStub();
@@ -389,22 +389,23 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
   {
     log(Logging::INFO, Logging::BRIGHT_WHITE) << "Attempting to import wallet from mnemonic seed";
 
-    auto [error, private_spend_key] = Mnemonics::MnemonicToPrivateKey(conf.mnemonicSeed);
+    Crypto::SecretKey private_spend_key;
+    Crypto::SecretKey private_view_key;
 
-    if (error)
+    std::string error;
+
+    std::tie(error, private_spend_key)
+        = Mnemonics::MnemonicToPrivateKey(conf.mnemonicSeed);
+
+    if (!error.empty())
     {
         log(Logging::ERROR, Logging::BRIGHT_RED) << error;
         return;
     }
 
-    Crypto::SecretKey private_view_key;
-
     CryptoNote::AccountBase::generateViewFromSpend(private_spend_key, private_view_key);
-
     wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key, conf.scanHeight, false);
-
     address = wallet->createAddress(private_spend_key, conf.scanHeight, false);
-
     log(Logging::INFO, Logging::BRIGHT_WHITE) << "Imported wallet successfully.";
   }
   else
@@ -419,7 +420,7 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
 		  log(Logging::INFO, Logging::BRIGHT_WHITE) << "Attemping to import wallet from keys";
 		  Crypto::Hash private_spend_key_hash;
 		  Crypto::Hash private_view_key_hash;
-		  uint64_t size;
+		  size_t size;
 		  if (!Common::fromHex(conf.secretSpendKey, &private_spend_key_hash, sizeof(private_spend_key_hash), size) || size != sizeof(private_spend_key_hash)) {
 			  log(Logging::ERROR, Logging::BRIGHT_RED) << "Invalid spend key";
 			  return;
@@ -442,7 +443,7 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
 }
 
 WalletService::WalletService(const CryptoNote::Currency& currency, System::Dispatcher& sys, CryptoNote::INode& node,
-  CryptoNote::IWallet& wallet, CryptoNote::IFusionManager& fusionManager, const WalletConfiguration& conf, std::shared_ptr<Logging::ILogger> logger) :
+  CryptoNote::IWallet& wallet, CryptoNote::IFusionManager& fusionManager, const WalletConfiguration& conf, Logging::ILogger& logger) :
     currency(currency),
     wallet(wallet),
     fusionManager(fusionManager),
@@ -1021,7 +1022,11 @@ std::error_code WalletService::sendTransaction(SendTransaction::Request& request
       validateAddresses({ request.changeAddress }, currency, logger);
     }
 
-    auto [success, error, error_code] = CryptoNote::Mixins::validate(request.anonymity, node.getLastKnownBlockHeight());
+    bool success;
+    std::string error;
+    std::error_code error_code;
+
+    std::tie(success, error, error_code) = CryptoNote::Mixins::validate(request.anonymity, node.getLastKnownBlockHeight());
 
     if (!success)
     {

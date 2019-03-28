@@ -25,11 +25,11 @@ namespace Common {
 class StringInputStream : public IInputStream {
 public:
   StringInputStream(const std::string& in);
-  uint64_t readSome(void* data, uint64_t size) override;
+  size_t readSome(void* data, size_t size) override;
 
 private:
   const std::string& in;
-  uint64_t offset;
+  size_t offset;
 };
 
 }

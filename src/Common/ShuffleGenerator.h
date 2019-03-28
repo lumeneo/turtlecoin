@@ -1,14 +1,24 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2018-2019, The TurtleCoin Developers
 //
-// Please see the included LICENSE file for more information.
+// This file is part of Bytecoin.
+//
+// Bytecoin is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Bytecoin is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <crypto/random.h>
-
 #include <unordered_map>
+#include <random>
 
 class SequenceEnded: public std::runtime_error {
 public:
@@ -18,12 +28,12 @@ public:
   ~SequenceEnded(){}
 };
 
-template <typename T>
+template <typename T, typename Gen>
 class ShuffleGenerator {
 public:
 
-  ShuffleGenerator(T n) :
-    N(n), count(n) {}
+  ShuffleGenerator(T n, const Gen& gen = Gen()) :
+    N(n), generator(gen), count(n) {}
 
   T operator()() {
 
@@ -31,7 +41,12 @@ public:
       throw SequenceEnded();
     }
 
-    T value = Random::randomValue<T>(0, --count);
+    typedef typename std::uniform_int_distribution<T> distr_t;
+    typedef typename distr_t::param_type param_t;
+
+    distr_t distr;
+    
+    T value = distr(generator, param_t(0, --count));
 
     auto rvalIt = selected.find(count);
     auto rval = rvalIt != selected.end() ? rvalIt->second : count;
@@ -62,4 +77,5 @@ private:
   std::unordered_map<T, T> selected;
   T count;
   const T N;
+  Gen generator;
 };

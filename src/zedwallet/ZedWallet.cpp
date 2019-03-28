@@ -6,9 +6,10 @@
 #include <zedwallet/ZedWallet.h>
 ////////////////////////////////
 
-#include <config/CliHeader.h>
 #include <Common/SignalHandler.h>
+
 #include <CryptoNoteCore/Currency.h>
+
 #include <Logging/FileLogger.h>
 #include <Logging/LoggerManager.h>
 
@@ -16,7 +17,7 @@
 #include <windows.h>
 #endif
 
-#include <Utilities/ColouredMsg.h>
+#include <zedwallet/ColouredMsg.h>
 #include <zedwallet/Menu.h>
 #include <zedwallet/ParseArguments.h>
 #include <zedwallet/Tools.h>
@@ -34,19 +35,29 @@ int main(int argc, char **argv)
 
     Config config = parseArguments(argc, argv);
 
-    std::cout << InformationMsg(CryptoNote::getProjectCLIHeader()) << std::endl;
+    /* User requested --help or --version, or invalid arguments */
+    if (config.exit)
+    {
+        return 0;
+    }
 
-    const auto logManager = std::make_shared<Logging::LoggerManager>();
+    Logging::LoggerManager logManager;
+
+    /* We'd like these lines to be in the below if(), but because some genius
+       thought it was a good idea to pass everything by reference and then
+       use them after the functions lifetime they go out of scope and break
+       stuff */
+    logManager.setMaxLevel(Logging::DEBUGGING);
+
+    Logging::FileLogger fileLogger;
 
     if (config.debug)
     {
-        logManager->setMaxLevel(Logging::DEBUGGING);
-
-        Logging::FileLogger fileLogger;
-
         fileLogger.init(WalletConfig::walletName + ".log");
-        logManager->addLogger(fileLogger);
+        logManager.addLogger(fileLogger);
     }
+
+    Logging::LoggerRef logger(logManager, WalletConfig::walletName);
 
     /* Currency contains our coin parameters, such as decimal places, supply */
     const CryptoNote::Currency currency 
@@ -57,8 +68,8 @@ int main(int argc, char **argv)
 
     /* Our connection to turtlecoind */
     std::unique_ptr<CryptoNote::INode> node(
-        new CryptoNote::NodeRpcProxy(config.host, config.port, 10, logManager)
-    );
+        new CryptoNote::NodeRpcProxy(config.host, config.port, 
+                                     logger.getLogger()));
 
     std::promise<std::error_code> errorPromise;
 
@@ -73,7 +84,7 @@ int main(int argc, char **argv)
 
     node->init(callback);
 
-    /* Connection took too long to remote node, let program continue regardless
+    /* Connection took to long to remote node, let program continue regardless
        as they could perform functions like export_keys without being
        connected */
     if (initNode.wait_for(std::chrono::seconds(20)) != std::future_status::ready)
@@ -94,7 +105,7 @@ int main(int argc, char **argv)
                       << std::endl << std::endl;
         }
     }
-
+    
     /*
       This will check to see if the node responded to /feeinfo and actually
       returned something that it expects us to use for convenience charges
@@ -102,7 +113,7 @@ int main(int argc, char **argv)
     */
     if (node->feeAmount() != 0 && !node->feeAddress().empty()) {
       std::stringstream feemsg;
-
+      
       feemsg << std::endl << "You have connected to a node that charges " <<
              "a fee to send transactions." << std::endl << std::endl
              << "The fee for sending transactions is: " << 
@@ -112,12 +123,13 @@ int main(int argc, char **argv)
              "relaunch " << WalletConfig::walletName <<
              " and specify a different node or run your own." <<
              std::endl;
-
+             
       std::cout << WarningMsg(feemsg.str()) << std::endl;
     }
 
     /* Create the wallet instance */
-    CryptoNote::WalletGreen wallet(*dispatcher, currency, *node, logManager);
+    CryptoNote::WalletGreen wallet(*dispatcher, currency, *node, 
+                                   logger.getLogger());
 
     /* Run the interactive wallet interface */
     run(wallet, *node, config);
@@ -126,18 +138,20 @@ int main(int argc, char **argv)
 void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
          Config &config)
 {
-    auto [quit, walletInfo] = selectionScreen(config, wallet, node);
+    std::cout << InformationMsg(getVersion()) << std::endl;
+
+    std::shared_ptr<WalletInfo> walletInfo;
+
+    bool quit;
+
+    std::tie(quit, walletInfo) = selectionScreen(config, wallet, node);
 
     bool alreadyShuttingDown = false;
 
     if (!quit)
     {
         /* Call shutdown on ctrl+c */
-        /* walletInfo = walletInfo - workaround for
-           https://stackoverflow.com/a/46115028/8737306 - standard &
-           capture works in newer compilers. */
-        Tools::SignalHandler::install([&walletInfo = walletInfo, &node,
-                                       &alreadyShuttingDown]
+        Tools::SignalHandler::install([&]
         {
             /* If we're already shutting down let control flow continue
                as normal */
@@ -149,6 +163,6 @@ void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
 
         mainLoop(walletInfo, node);
     }
-
+    
     shutdown(walletInfo, node, alreadyShuttingDown);
 }

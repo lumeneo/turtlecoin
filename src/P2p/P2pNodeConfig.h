@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <boost/uuid/uuid.hpp>
 #include <chrono>
 #include "NetNodeConfig.h"
 
@@ -37,6 +36,17 @@ public:
   boost::uuids::uuid getNetworkId() const;
   size_t getPeerListConnectRange() const;
   size_t getPeerListGetTryCount() const;
+
+  // setters
+  void setTimedSyncInterval(std::chrono::nanoseconds interval);
+  void setHandshakeTimeout(std::chrono::nanoseconds timeout);
+  void setConnectInterval(std::chrono::nanoseconds interval);
+  void setConnectTimeout(std::chrono::nanoseconds timeout);
+  void setExpectedOutgoingConnectionsCount(size_t count);
+  void setWhiteListConnectionsPercent(size_t percent);
+  void setNetworkId(const boost::uuids::uuid& id);
+  void setPeerListConnectRange(size_t range);
+  void setPeerListGetTryCount(size_t count);
 
 private:
   std::chrono::nanoseconds timedSyncInterval;

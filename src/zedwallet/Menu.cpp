@@ -8,7 +8,7 @@
 
 #include <Common/SignalHandler.h>
 
-#include <Utilities/ColouredMsg.h>
+#include <zedwallet/ColouredMsg.h>
 #include <zedwallet/CommandDispatcher.h>
 #include <zedwallet/Commands.h>
 #include <zedwallet/GetInput.h>
@@ -42,12 +42,12 @@ std::string parseCommand(const std::vector<T> &printableCommands,
 
         try
         {
-            int selectionNum = std::stoi(selection);
+            size_t selectionNum = std::stoi(selection);
 
             /* Input is in 1 based indexing, we need 0 based indexing */
             selectionNum--;
 
-            int numCommands = static_cast<int>(availableCommands.size());
+            size_t numCommands = availableCommands.size();
 
             /* Must be in the bounds of the vector */
             if (selectionNum < 0 || selectionNum >= numCommands)
@@ -66,23 +66,6 @@ std::string parseCommand(const std::vector<T> &printableCommands,
             }
 
             selection = availableCommands[selectionNum].commandName;
-        }
-        /* Too lazy to dedupe this part, lol */
-        catch (const std::out_of_range &)
-        {
-            int numCommands = static_cast<int>(availableCommands.size());
-
-            std::cout << WarningMsg("Bad input, expected a command name, ")
-                      << WarningMsg("or number from ")
-                      << InformationMsg("1")
-                      << WarningMsg(" to ")
-                      << InformationMsg(std::to_string(numCommands))
-                      << std::endl;
-
-            /* Print the available commands again if the input is bad */
-            printCommands(printableCommands);
-
-            continue;
         }
         /* Input ain't a number */
         catch (const std::invalid_argument &)
@@ -125,7 +108,7 @@ std::tuple<bool, std::shared_ptr<WalletInfo>>
         /* User wants to exit */
         if (launchCommand == "exit")
         {
-            return {true, nullptr};
+            return std::make_tuple(true, nullptr);
         }
 
         /* Handle the user input */
@@ -145,7 +128,7 @@ std::tuple<bool, std::shared_ptr<WalletInfo>>
         /* Node is down, user wants to exit */
         if (!checkNodeStatus(node))
         {
-            return {true, nullptr};
+            return std::make_tuple(true, nullptr);
         }
     
         /* If we're creating a wallet, don't print the lengthy sync process */
@@ -183,7 +166,7 @@ std::tuple<bool, std::shared_ptr<WalletInfo>>
         }
 
         /* Return the wallet info */
-        return {false, walletInfo};
+        return std::make_tuple(false, walletInfo);
     }
 }
 
@@ -296,9 +279,9 @@ void mainLoop(std::shared_ptr<WalletInfo> walletInfo, CryptoNote::INode &node)
 }
 
 template<typename T>
-void printCommands(const std::vector<T> &commands, size_t offset)
+void printCommands(const std::vector<T> &commands, int offset)
 {
-    size_t i = 1 + offset;
+    int i = 1 + offset;
 
     std::cout << std::endl;
 
@@ -333,7 +316,7 @@ std::string parseCommand(const std::vector<AdvancedCommand> &printableCommands,
                          std::shared_ptr<WalletInfo> walletInfo);
 
 template
-void printCommands(const std::vector<Command> &commands, size_t offset);
+void printCommands(const std::vector<Command> &commands, int offset);
 
 template
-void printCommands(const std::vector<AdvancedCommand> &commands, size_t offset);
+void printCommands(const std::vector<AdvancedCommand> &commands, int offset);

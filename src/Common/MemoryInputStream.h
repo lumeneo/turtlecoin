@@ -23,15 +23,16 @@ namespace Common {
 
   class MemoryInputStream : public IInputStream {
   public:
-    MemoryInputStream(const void* buffer, uint64_t bufferSize);
+    MemoryInputStream(const void* buffer, size_t bufferSize);
+    size_t getPosition() const;
     bool endOfStream() const;
     
     // IInputStream
-    virtual uint64_t readSome(void* data, uint64_t size) override;
+    virtual size_t readSome(void* data, size_t size) override;
 
   private:
     const char* buffer;
-    uint64_t bufferSize;
-    uint64_t position;
+    size_t bufferSize;
+    size_t position;
   };
 }

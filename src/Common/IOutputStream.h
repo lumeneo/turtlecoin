@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
 
 namespace Common {
@@ -25,7 +24,7 @@ namespace Common {
 class IOutputStream {
 public:
   virtual ~IOutputStream() { }
-  virtual uint64_t writeSome(const void* data, uint64_t size) = 0;
+  virtual size_t writeSome(const void* data, size_t size) = 0;
 };
 
 }

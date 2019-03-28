@@ -13,7 +13,7 @@
 
 #include <Wallet/WalletErrors.h>
 
-#include <Utilities/ColouredMsg.h>
+#include <zedwallet/ColouredMsg.h>
 #include <zedwallet/CommandImplementations.h>
 #include <zedwallet/Tools.h>
 #include <zedwallet/Transfer.h>
@@ -91,36 +91,40 @@ std::shared_ptr<WalletInfo> importWallet(CryptoNote::WalletGreen &wallet)
 std::shared_ptr<WalletInfo> mnemonicImportWallet(CryptoNote::WalletGreen
                                                  &wallet)
 {
+    std::string mnemonicPhrase;
+
+    Crypto::SecretKey privateSpendKey;
+    Crypto::SecretKey privateViewKey;
+
     while (true)
     {
         std::cout << InformationMsg("Enter your mnemonic phrase (25 words): ");
-
-        std::string mnemonicPhrase;
 
         std::getline(std::cin, mnemonicPhrase);
 
         trim(mnemonicPhrase);
         
-        auto [error, privateSpendKey]
+        std::string error;
+
+        std::tie(error, privateSpendKey)
             = Mnemonics::MnemonicToPrivateKey(mnemonicPhrase);
 
-        if (error)
+        if (!error.empty())
         {
             std::cout << std::endl
-                      << WarningMsg(error.getErrorMessage())
+                      << WarningMsg(error)
                       << std::endl << std::endl;
         }
         else
         {
-            Crypto::SecretKey privateViewKey;
-
-            CryptoNote::AccountBase::generateViewFromSpend(
-                privateSpendKey, privateViewKey
-            );
-
-            return importFromKeys(wallet, privateSpendKey, privateViewKey);
+            break;
         }
     }
+
+    CryptoNote::AccountBase::generateViewFromSpend(privateSpendKey, 
+                                                   privateViewKey);
+
+    return importFromKeys(wallet, privateSpendKey, privateViewKey);
 }
 
 std::shared_ptr<WalletInfo> importFromKeys(CryptoNote::WalletGreen &wallet,
@@ -334,8 +338,8 @@ std::shared_ptr<WalletInfo> openWallet(CryptoNote::WalletGreen &wallet,
 
 Crypto::SecretKey getPrivateKey(std::string msg)
 {
-    const uint64_t privateKeyLen = 64;
-    uint64_t size;
+    const size_t privateKeyLen = 64;
+    size_t size;
 
     std::string privateKeyString;
     Crypto::Hash privateKeyHash;

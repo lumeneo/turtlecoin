@@ -23,7 +23,7 @@
 #include <unistd.h>
 #endif
 
-#include <Utilities/ColouredMsg.h>
+#include <zedwallet/ColouredMsg.h>
 
 namespace Tools
 {
